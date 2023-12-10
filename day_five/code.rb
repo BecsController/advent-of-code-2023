@@ -2,7 +2,7 @@ require "pry"
 
 # Solution part one
 
-elf_inputs = File.open("input.txt").read.split("\n\n")
+elf_inputs = File.open("test_input.txt").read.split("\n\n")
 
 MAPS = {}
 
@@ -25,95 +25,47 @@ maps.each do |map|
   end
 end
 
+def get_next_location_index(map_title, previous_index)
+  next_index = MAPS[map_title][:source].map.with_index do |range, i|
+    if range.include?(previous_index)
+      MAPS[map_title][:destination][i].first + (previous_index - range.first)
+    elsif i == -1
+      previous_index
+    else
+      next 
+    end
+  end
+
+  next_index = next_index.compact.first || previous_index
+end
+
 @route = {}
 def get_locations(seeds)
   seeds.map do |seed|
-    soil_index = MAPS["seed-to-soil map"][:source].map.with_index do |range, i|
-      if range.include?(seed)
-        MAPS["seed-to-soil map"][:destination][i].first + (seed - range.first)
-      elsif i == -1
-        seed
-      else
-        next
-      end
-    end
+    soil_index = get_next_location_index("seed-to-soil map", seed)
+
     @route[seed] = []
-    soil_index = soil_index.compact.first || seed
     @route[seed] << [seed, soil_index]
-    fertilizer_index = MAPS["soil-to-fertilizer map"][:source].map.with_index do |range, i|
-      if range.include?(soil_index)
-        MAPS["soil-to-fertilizer map"][:destination][i].first + (soil_index - range.first)
-      elsif i == -1
-        soil_index
-      else
-        next
-      end
-    end
-  
-    fertilizer_index = fertilizer_index.compact.first || soil_index
+
+    fertilizer_index = get_next_location_index("soil-to-fertilizer map", soil_index)
     @route[seed] << [soil_index, fertilizer_index]
-    water_index = MAPS["fertilizer-to-water map"][:source].map.with_index do |range, i|
-      if range.include?(fertilizer_index)
-        MAPS["fertilizer-to-water map"][:destination][i].first + (fertilizer_index - range.first)
-      elsif i == -1
-        fertilizer_index
-      else
-        next
-      end
-    end
-  
-    water_index = water_index.compact.first || fertilizer_index
+
+    water_index = get_next_location_index("fertilizer-to-water map", fertilizer_index)
     @route[seed] << [fertilizer_index, water_index]
-    light_index = MAPS["water-to-light map"][:source].map.with_index do |range, i|
-      if range.include?(water_index)
-        MAPS["water-to-light map"][:destination][i].first + (water_index - range.first)
-      elsif i == -1
-        water_index
-      else
-        next
-      end
-    end
-  
-    light_index = light_index.compact.first || water_index
+
+    light_index = get_next_location_index("water-to-light map", water_index)
     @route[seed] << [water_index, light_index]
   
-    temperature_index = MAPS["light-to-temperature map"][:source].map.with_index do |range, i|
-      if range.include?(light_index)
-        MAPS["light-to-temperature map"][:destination][i].first + (light_index - range.first)
-      elsif i == -1
-        light_index
-      else
-        next
-      end
-    end
-  
-    temperature_index = temperature_index.compact.first || light_index
+    temperature_index = get_next_location_index("light-to-temperature map", light_index)
     @route[seed] << [light_index, temperature_index]
   
-    humidity_index = MAPS["temperature-to-humidity map"][:source].map.with_index do |range, i|
-      if range.include?(temperature_index)
-        MAPS["temperature-to-humidity map"][:destination][i].first + (temperature_index - range.first)
-      elsif i == -1
-        temperature_index
-      else
-        next
-      end
-    end
-  
-    humidity_index = humidity_index.compact.first || temperature_index
+    humidity_index = get_next_location_index("temperature-to-humidity map", temperature_index)
     @route[seed] << [temperature_index, humidity_index]
   
-    location_index = MAPS["humidity-to-location map"][:source].map.with_index do |range, i|
-      if range.include?(humidity_index)
-        MAPS["humidity-to-location map"][:destination][i].first + (humidity_index - range.first)
-      elsif i == -1
-        humidity_index
-      else
-        next
-      end
-    end
-    @route[seed] << [humidity_index, location_index.compact.first || humidity_index]
-    location_index.compact.first || humidity_index
+    location_index = get_next_location_index("humidity-to-location map", humidity_index)
+    @route[seed] << [humidity_index, location_index]
+
+    location_index
   end
 end
 
@@ -123,103 +75,46 @@ puts "Solution One = #{get_locations(seeds).min}"
 @location_to_seed = 0
 @route_two = {}
 
-def reverse_from_location(location) 
-  # grab range from source, if it includes the current index then grab corresponding direction or return current index
-  @route_two[location] = []
-  humidity_index = MAPS["humidity-to-location map"][:destination].map.with_index do |range, i|
-    if range.include?(location)
-      MAPS["humidity-to-location map"][:source][i].first + (location - range.first)
+def get_next_location_index_in_reverse(map_title, previous_index)
+  next_index = MAPS[map_title][:destination].map.with_index do |range, i|
+    if range.include?(previous_index)
+      MAPS[map_title][:source][i].first + (previous_index - range.first)
     elsif i == -1
-      location
+      previous_index
     else
-      next
+      next 
     end
-  end.compact.first
+  end
 
-  humidity_index = humidity_index.nil? ? location : humidity_index
+  next_index = next_index.compact.first || previous_index
+end
+
+def reverse_from_location(location) 
+  @route_two[location] = []
+  humidity_index = get_next_location_index_in_reverse("humidity-to-location map", location)
   @route_two[location] << [location, humidity_index]
 
-  temperature_index = MAPS["temperature-to-humidity map"][:destination].map.with_index do |range, i|
-    if range.include?(humidity_index)
-      MAPS["temperature-to-humidity map"][:source][i].first + (humidity_index - range.first)
-    elsif i == -1
-      humidity_index
-    else
-      next
-    end
-  end.compact.first
-
-  temperature_index = temperature_index.nil? ? humidity_index : temperature_index
-
+  temperature_index = get_next_location_index_in_reverse("temperature-to-humidity map", humidity_index)
   @route_two[location] << [humidity_index, temperature_index]
-  light_index = MAPS["light-to-temperature map"][:destination].map.with_index do |range, i|
-    if range.include?(temperature_index)
-      MAPS["light-to-temperature map"][:source][i].first + (temperature_index - range.first)
-    elsif i == -1
-      temperature_index
-    else
-      next
-    end
-  end.compact.first
 
-  light_index = light_index.nil? ? temperature_index : light_index
+  light_index = get_next_location_index_in_reverse("light-to-temperature map", temperature_index)
   @route_two[location] << [temperature_index, light_index]
   
-  water_index = MAPS["water-to-light map"][:destination].map.with_index do |range, i|
-    if range.include?(light_index)
-      MAPS["water-to-light map"][:source][i].first + (light_index - range.first)
-    elsif i == -1
-      light_index
-    else
-      next
-    end
-  end.compact.first
-
-  water_index = water_index.nil? ? light_index : water_index
+  water_index = get_next_location_index_in_reverse("water-to-light map", light_index)
   @route_two[location] << [light_index, water_index]
   
-  fertilizer_index = MAPS["fertilizer-to-water map"][:destination].map.with_index do |range, i|
-    if range.include?(water_index)
-      MAPS["fertilizer-to-water map"][:source][i].first + (water_index - range.first)
-    elsif i == -1
-      water_index
-    else
-      next
-    end
-  end.compact.first
-
-  fertilizer_index = fertilizer_index.nil? ? water_index : fertilizer_index
+  fertilizer_index = get_next_location_index_in_reverse("fertilizer-to-water map", water_index)
   @route_two[location] << [water_index, fertilizer_index]
 
-  soil_index = MAPS["soil-to-fertilizer map"][:destination].map.with_index do |range, i|
-    if range.include?(fertilizer_index)
-      MAPS["soil-to-fertilizer map"][:source][i].first + (fertilizer_index - range.first)
-    elsif i == -1
-      fertilizer_index
-    else
-      next
-    end
-  end.compact.first
-
-  soil_index = soil_index.nil? ? fertilizer_index : soil_index
-
+  soil_index = get_next_location_index_in_reverse("soil-to-fertilizer map", fertilizer_index)
   @route_two[location] << [fertilizer_index, soil_index]
 
-  seed_index = MAPS["seed-to-soil map"][:destination].map.with_index do |range, i|
-    if range.include?(soil_index)
-      MAPS["seed-to-soil map"][:source][i].first + (soil_index - range.first)
-    elsif i == -1
-      seed
-    else
-      next
-    end
-  end.compact.first
-
-  seed_index = seed_index.nil? ? soil_index : seed_index
+  seed_index = get_next_location_index_in_reverse("seed-to-soil map", soil_index)
   @route_two[location] << [soil_index, seed_index]
 
   @location_to_seed = location if @part_two_seeds.include?(seed_index)
 end
+
 @part_two_seeds = []
 
 seeds.each_slice(2).map do |chunk|
